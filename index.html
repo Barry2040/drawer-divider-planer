@@ -3,43 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Drawer Dividers - Web Planer</title>
+    <title>Drawer Dividers - Web Planner</title>
     <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #2c3e50;
-        }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #2c3e50; color: #333;}
         #ui-panel { 
-            position: absolute; 
-            top: 20px; 
-            left: 20px; 
-            background: rgba(255, 255, 255, 0.95); 
-            padding: 20px; 
-            border-radius: 12px; 
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2); 
-            width: 320px;
-            max-height: 90vh;
-            overflow-y: auto;
+            position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.95); 
+            padding: 20px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); 
+            width: 340px; max-height: 90vh; overflow-y: auto; z-index: 10;
         }
-        h2 { margin-top: 0; color: #2c3e50; font-size: 20px; }
-        label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #34495e; }
+        h2 { margin-top: 0; color: #2c3e50; font-size: 20px; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px;}
+        h3 { font-size: 14px; margin: 20px 0 10px 0; color: #7f8c8d; text-transform: uppercase;}
+        label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; }
         input[type="range"] { width: 100%; margin-top: 8px; cursor: pointer; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px;}
         button { 
-            margin-top: 20px; 
-            width: 100%; 
-            padding: 10px; 
-            background: #27ae60; 
-            color: white; 
-            border: none; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            font-weight: bold;
-            transition: background 0.2s;
+            flex: 1; padding: 10px; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s;
         }
-        button:hover { background: #2ecc71; }
-        .wall-control { background: #ecf0f1; padding: 10px; border-radius: 6px; margin-top: 10px; border-left: 4px solid #3498db; }
+        button:hover { opacity: 0.8; }
+        .btn-hor { background: #3498db; }
+        .btn-ver { background: #e67e22; }
+        .wall-control { background: #f8f9fa; padding: 12px; border-radius: 6px; margin-top: 10px; border-left: 4px solid #bdc3c7; position: relative;}
+        .wall-control.hor { border-left-color: #3498db; }
+        .wall-control.ver { border-left-color: #e67e22; }
+        .del-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 12px; cursor: pointer;}
+        
+        /* Das ist das Styling für die 3D Maßangaben! */
+        .measurement-label {
+            color: #000;
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            pointer-events: none;
+            margin-top: -15px;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -48,166 +49,295 @@
         <h2>📐 Schubladen Planer</h2>
         
         <label>Schubladen-Breite: <span id="valX">400</span> mm</label>
-        <input type="range" id="drawerX" min="150" max="800" value="400">
+        <input type="range" id="drawerX" min="100" max="800" value="400">
         
         <label>Schubladen-Tiefe: <span id="valY">500</span> mm</label>
-        <input type="range" id="drawerY" min="150" max="800" value="500">
+        <input type="range" id="drawerY" min="100" max="800" value="500">
 
-        <button id="addHWall">+ Horizontale Wand hinzufügen</button>
+        <div class="btn-group">
+            <button class="btn-hor" id="addHWall">+ Horizontal (X)</button>
+            <button class="btn-ver" id="addVWall">+ Vertikal (Y)</button>
+        </div>
         
+        <h3>Wände Positionieren</h3>
         <div id="wallsContainer"></div> 
     </div>
 
+    <!-- Import Maps für Three.js -->
     <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
     <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
+        { "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }}
     </script>
 
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-        // 1. Szene, Kamera & Renderer einrichten
+        // 1. Szene & WebGL Renderer
         const scene = new THREE.Scene();
-        // Ein schönes, dunkles Maker-Grau als Hintergrund
-        scene.background = new THREE.Color(0x2c3e50); 
-
+        scene.background = new THREE.Color(0x1e272e); 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
-        camera.position.set(0, 800, 600); // Schräg von oben gucken
-
+        camera.position.set(0, 800, 600);
+        
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        // Weiche Schatten aktivieren
-        renderer.shadowMap.enabled = true; 
         document.body.appendChild(renderer.domElement);
+
+        // 2. CSS2D Renderer für die 3D Texte einrichten!
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
 
-        // 2. Licht anmachen
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-        
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(300, 800, 300);
-        dirLight.castShadow = true;
+        // Licht
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(200, 500, 300);
         scene.add(dirLight);
 
-        // 3. Variablen für unser System
-        const drawerGroup = new THREE.Group();
-        scene.add(drawerGroup);
+        // Geometrie-Container
+        const systemGroup = new THREE.Group();
+        scene.add(systemGroup);
 
-        let drawerWidth = 400;
-        let drawerDepth = 500;
-        const wallThickness = 2;
-        const wallHeight = 40;
-        const railThickness = 8.5; // Die dicke deiner Raster-Schienen
+        // --- SYSTEM PARAMETER (Aus deinem OpenSCAD) ---
+        let Schubladen_Breite = 400;
+        let Schubladen_Tiefe = 500;
+        
+        const System_Wand_Dicke = 2.0; 
+        const System_Wand_Hoehe = 40;
+        const Schlitz_Toleranz = 0.2;
+        const Schiene_Platten_Dicke = 2.5;
+        const Schiene_Zahn_Hoehe = 6.0;
+        const Schiene_Zahn_Dicke = 2.0;
+        const Verbinder_Arm_Laenge = 20.0; 
+        const Verbinder_Einschub_Tiefe = 14.0;
+        const Verbinder_Aussenwand = 2.5;
 
-        // Farben für die Bauteile
-        const floorMat = new THREE.MeshLambertMaterial({ color: 0xe0e0e0, transparent: true, opacity: 0.3 });
-        const railMat = new THREE.MeshLambertMaterial({ color: 0x34495e });
-        const wallMat = new THREE.MeshLambertMaterial({ color: 0x3498db });
+        const raster_mass = Schiene_Zahn_Dicke + System_Wand_Dicke + Schlitz_Toleranz;
+        const Verbinder_Luecke = Verbinder_Arm_Laenge - Verbinder_Einschub_Tiefe; 
+        const Verbinder_Breite = System_Wand_Dicke + Schlitz_Toleranz + (2 * Verbinder_Aussenwand);
 
-        const hWalls = []; // Speichert alle erstellten Wände
+        // Materialien
+        const matFloor = new THREE.MeshLambertMaterial({ color: 0x95a5a6, transparent: true, opacity: 0.2 });
+        const matRail = new THREE.MeshLambertMaterial({ color: 0x34495e });
+        const matWallH = new THREE.MeshLambertMaterial({ color: 0x3498db });
+        const matWallV = new THREE.MeshLambertMaterial({ color: 0xe67e22 });
+        const matConn = new THREE.MeshLambertMaterial({ color: 0xbdc3c7 });
 
-        // Funktion: Baut die Grund-Schublade (Boden + Schienen)
-        function buildDrawer() {
-            // Alte Teile löschen
-            drawerGroup.clear();
-            hWalls.length = 0;
-            document.getElementById('wallsContainer').innerHTML = '';
+        let wallsData = [];
+        let idCounter = 0;
 
-            // Virtueller Schubladenboden
-            const floorGeo = new THREE.BoxGeometry(drawerWidth, 2, drawerDepth);
-            const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-            floorMesh.receiveShadow = true;
-            drawerGroup.add(floorMesh);
-
-            // Raster-Schienen am Rand (Fürs erste als einfache Blöcke)
-            const railGeo = new THREE.BoxGeometry(railThickness, wallHeight, drawerDepth);
+        function buildSystem() {
+            systemGroup.clear();
             
-            const railL = new THREE.Mesh(railGeo, railMat);
-            railL.position.set(-drawerWidth/2 + railThickness/2, wallHeight/2, 0);
-            railL.castShadow = true;
-            drawerGroup.add(railL);
+            // Setze den Nullpunkt nach unten links, damit die Mathematik wie in OpenSCAD funktioniert
+            systemGroup.position.set(-Schubladen_Breite/2, 0, -Schubladen_Tiefe/2);
 
-            const railR = new THREE.Mesh(railGeo, railMat);
-            railR.position.set(drawerWidth/2 - railThickness/2, wallHeight/2, 0);
-            railR.castShadow = true;
-            drawerGroup.add(railR);
+            // 1. Bodenplatte
+            const floor = new THREE.Mesh(new THREE.BoxGeometry(Schubladen_Breite, 2, Schubladen_Tiefe), matFloor);
+            floor.position.set(Schubladen_Breite/2, -1, Schubladen_Tiefe/2);
+            systemGroup.add(floor);
+
+            // 2. Wände sortieren
+            let h_pos = wallsData.filter(w => w.type === 'H').map(w => w.pos).sort((a,b)=>a-b);
+            let v_pos = wallsData.filter(w => w.type === 'V').map(w => w.pos).sort((a,b)=>a-b);
+
+            let min_x = Schiene_Platten_Dicke;
+            let max_x = Schubladen_Breite - Schiene_Platten_Dicke;
+            let min_y = Schiene_Platten_Dicke;
+            let max_y = Schubladen_Tiefe - Schiene_Platten_Dicke;
+
+            // 3. Raster-Schienen (Exakt gemodelt mit Zähnen!)
+            function drawRailY(x_pos, isRight) {
+                let anzahl = Math.floor(Schubladen_Tiefe / raster_mass);
+                let belegt = (anzahl * Schiene_Zahn_Dicke) + ((anzahl - 1) * (System_Wand_Dicke + Schlitz_Toleranz));
+                let start_y = (Schubladen_Tiefe - belegt) / 2;
+                
+                let baseGeo = new THREE.BoxGeometry(Schiene_Platten_Dicke, System_Wand_Hoehe, Schubladen_Tiefe);
+                let base = new THREE.Mesh(baseGeo, matRail);
+                base.position.set(isRight ? x_pos - Schiene_Platten_Dicke/2 : x_pos + Schiene_Platten_Dicke/2, System_Wand_Hoehe/2, Schubladen_Tiefe/2);
+                systemGroup.add(base);
+
+                let zahn_x = isRight ? x_pos - Schiene_Platten_Dicke - Schiene_Zahn_Hoehe/2 : x_pos + Schiene_Platten_Dicke + Schiene_Zahn_Hoehe/2;
+                let zahnGeo = new THREE.BoxGeometry(Schiene_Zahn_Hoehe, System_Wand_Hoehe, Schiene_Zahn_Dicke);
+                
+                for(let i=0; i<anzahl; i++) {
+                    let zahn = new THREE.Mesh(zahnGeo, matRail);
+                    zahn.position.set(zahn_x, System_Wand_Hoehe/2, start_y + (i * raster_mass) + Schiene_Zahn_Dicke/2);
+                    systemGroup.add(zahn);
+                }
+            }
+            drawRailY(0, false);
+            drawRailY(Schubladen_Breite, true);
+
+            function drawRailX(y_pos, isBack) {
+                let schiene_laenge = Schubladen_Breite - (2 * Schiene_Platten_Dicke);
+                let anzahl = Math.floor(schiene_laenge / raster_mass);
+                let belegt = (anzahl * Schiene_Zahn_Dicke) + ((anzahl - 1) * (System_Wand_Dicke + Schlitz_Toleranz));
+                let start_x = (Schubladen_Breite - belegt) / 2;
+
+                let baseGeo = new THREE.BoxGeometry(schiene_laenge, System_Wand_Hoehe, Schiene_Platten_Dicke);
+                let base = new THREE.Mesh(baseGeo, matRail);
+                base.position.set(Schubladen_Breite/2, System_Wand_Hoehe/2, isBack ? y_pos - Schiene_Platten_Dicke/2 : y_pos + Schiene_Platten_Dicke/2);
+                systemGroup.add(base);
+
+                let zahn_y = isBack ? y_pos - Schiene_Platten_Dicke - Schiene_Zahn_Hoehe/2 : y_pos + Schiene_Platten_Dicke + Schiene_Zahn_Hoehe/2;
+                let zahnGeo = new THREE.BoxGeometry(Schiene_Zahn_Dicke, System_Wand_Hoehe, Schiene_Zahn_Hoehe);
+
+                for(let i=0; i<anzahl; i++) {
+                    let zahn = new THREE.Mesh(zahnGeo, matRail);
+                    zahn.position.set(start_x + (i * raster_mass) + Schiene_Zahn_Dicke/2, System_Wand_Hoehe/2, zahn_y);
+                    systemGroup.add(zahn);
+                }
+            }
+            drawRailX(0, false);
+            drawRailX(Schubladen_Tiefe, true);
+
+            // 4. Verbinder zeichnen
+            if (h_pos.length > 0 && v_pos.length > 0) {
+                h_pos.forEach(y => {
+                    v_pos.forEach(x => {
+                        let centerBox = new THREE.Mesh(new THREE.BoxGeometry(Verbinder_Breite, System_Wand_Hoehe, Verbinder_Breite), matConn);
+                        centerBox.position.set(x, System_Wand_Hoehe/2, y);
+                        systemGroup.add(centerBox);
+
+                        let armX = new THREE.Mesh(new THREE.BoxGeometry(Verbinder_Arm_Laenge*2, System_Wand_Hoehe, Verbinder_Breite), matConn);
+                        armX.position.set(x, System_Wand_Hoehe/2, y);
+                        systemGroup.add(armX);
+
+                        let armY = new THREE.Mesh(new THREE.BoxGeometry(Verbinder_Breite, System_Wand_Hoehe, Verbinder_Arm_Laenge*2), matConn);
+                        armY.position.set(x, System_Wand_Hoehe/2, y);
+                        systemGroup.add(armY);
+                    });
+                });
+            }
+
+            // 5. Horizontale Segmente (inklusive Math-Labels)
+            h_pos.forEach(y => {
+                let pts_x = [min_x, ...v_pos, max_x];
+                for(let i=0; i<pts_x.length-1; i++) {
+                    let x1 = pts_x[i];
+                    let x2 = pts_x[i+1];
+                    let gap1 = (i === 0) ? 0 : Verbinder_Luecke;
+                    let gap2 = (i === pts_x.length-2) ? 0 : Verbinder_Luecke;
+                    
+                    let seg_len = (x2 - gap2) - (x1 + gap1);
+                    let center_x = (x1 + gap1 + x2 - gap2) / 2;
+                    
+                    if (seg_len > 0) {
+                        let mesh = new THREE.Mesh(new THREE.BoxGeometry(seg_len, System_Wand_Hoehe, System_Wand_Dicke), matWallH);
+                        mesh.position.set(center_x, System_Wand_Hoehe/2, y);
+                        systemGroup.add(mesh);
+
+                        // 3D Text Label!
+                        createLabel(`${seg_len.toFixed(1)} mm`, center_x, System_Wand_Hoehe, y);
+                    }
+                }
+            });
+
+            // 6. Vertikale Segmente (inklusive Math-Labels)
+            v_pos.forEach(x => {
+                let pts_y = [min_y, ...h_pos, max_y];
+                for(let i=0; i<pts_y.length-1; i++) {
+                    let y1 = pts_y[i];
+                    let y2 = pts_y[i+1];
+                    let gap1 = (i === 0) ? 0 : Verbinder_Luecke;
+                    let gap2 = (i === pts_y.length-2) ? 0 : Verbinder_Luecke;
+                    
+                    let seg_len = (y2 - gap2) - (y1 + gap1);
+                    let center_y = (y1 + gap1 + y2 - gap2) / 2;
+                    
+                    if (seg_len > 0) {
+                        let mesh = new THREE.Mesh(new THREE.BoxGeometry(System_Wand_Dicke, System_Wand_Hoehe, seg_len), matWallV);
+                        mesh.position.set(x, System_Wand_Hoehe/2, center_y);
+                        systemGroup.add(mesh);
+
+                        // 3D Text Label!
+                        createLabel(`${seg_len.toFixed(1)} mm`, x, System_Wand_Hoehe, center_y);
+                    }
+                }
+            });
         }
 
-        // Erstaufbau
-        buildDrawer();
-
-        // 4. UI-Logik (Was passiert, wenn man Knöpfe drückt)
-        document.getElementById('drawerX').addEventListener('input', (e) => {
-            drawerWidth = parseInt(e.target.value);
-            document.getElementById('valX').innerText = drawerWidth;
-            buildDrawer();
-        });
-
-        document.getElementById('drawerY').addEventListener('input', (e) => {
-            drawerDepth = parseInt(e.target.value);
-            document.getElementById('valY').innerText = drawerDepth;
-            buildDrawer();
-        });
-
-        // Wand hinzufügen
-        document.getElementById('addHWall').addEventListener('click', () => {
-            // Wandlänge berechnen (Breite minus linke und rechte Schiene)
-            const length = drawerWidth - (2 * railThickness);
-            
-            const wallGeo = new THREE.BoxGeometry(length, wallHeight, wallThickness);
-            const wallMesh = new THREE.Mesh(wallGeo, wallMat);
-            wallMesh.position.set(0, wallHeight/2, 0); // Start in der Mitte
-            wallMesh.castShadow = true;
-            
-            drawerGroup.add(wallMesh);
-            hWalls.push(wallMesh);
-
-            const index = hWalls.length - 1;
-            
-            // Neues HTML-Menü für diese Wand bauen
-            const container = document.getElementById('wallsContainer');
+        // Hilfsfunktion für die 3D Labels
+        function createLabel(text, x, y, z) {
             const div = document.createElement('div');
-            div.className = 'wall-control';
+            div.className = 'measurement-label';
+            div.textContent = text;
+            const label = new CSS2DObject(div);
+            label.position.set(x, y, z);
+            systemGroup.add(label);
+        }
+
+        function updateUI() {
+            const container = document.getElementById('wallsContainer');
+            container.innerHTML = '';
             
-            // Min/Max für den Schieberegler so berechnen, dass die Wand in der Schublade bleibt
-            const maxPos = (drawerDepth / 2) - 5; 
-            const minPos = -maxPos;
+            wallsData.forEach(w => {
+                const div = document.createElement('div');
+                div.className = `wall-control ${w.type === 'H' ? 'hor' : 'ver'}`;
+                const name = w.type === 'H' ? "Horizontale Wand" : "Vertikale Wand";
+                const maxPos = w.type === 'H' ? Schubladen_Tiefe - 10 : Schubladen_Breite - 10;
+                
+                div.innerHTML = `
+                    <button class="del-btn" data-id="${w.id}">X</button>
+                    <strong>${name}</strong>
+                    <label>Position: <span id="wval${w.id}">${w.pos}</span> mm</label>
+                    <input type="range" min="10" max="${maxPos}" value="${w.pos}" id="wslide${w.id}">
+                `;
+                container.appendChild(div);
 
-            div.innerHTML = `
-                <label>Wand ${index+1} Y-Position: <span id="wval${index}">0</span> mm</label>
-                <input type="range" min="${minPos}" max="${maxPos}" value="0" id="wslide${index}">
-            `;
-            container.appendChild(div);
+                document.getElementById(`wslide${w.id}`).addEventListener('input', (e) => {
+                    w.pos = parseInt(e.target.value);
+                    document.getElementById(`wval${w.id}`).innerText = w.pos;
+                    buildSystem();
+                });
 
-            // Regler-Bewegung auf die 3D-Wand übertragen
-            document.getElementById(`wslide${index}`).addEventListener('input', (e) => {
-                const pos = parseInt(e.target.value);
-                document.getElementById(`wval${index}`).innerText = pos;
-                hWalls[index].position.z = pos; // In 3D ist Z die Tiefe!
+                div.querySelector('.del-btn').addEventListener('click', () => {
+                    wallsData = wallsData.filter(wd => wd.id !== w.id);
+                    updateUI();
+                    buildSystem();
+                });
             });
+        }
+
+        // Listeners
+        document.getElementById('drawerX').addEventListener('input', (e) => { Schubladen_Breite = parseInt(e.target.value); document.getElementById('valX').innerText = Schubladen_Breite; updateUI(); buildSystem(); });
+        document.getElementById('drawerY').addEventListener('input', (e) => { Schubladen_Tiefe = parseInt(e.target.value); document.getElementById('valY').innerText = Schubladen_Tiefe; updateUI(); buildSystem(); });
+
+        document.getElementById('addHWall').addEventListener('click', () => {
+            wallsData.push({ id: idCounter++, type: 'H', pos: Math.floor(Schubladen_Tiefe/2) });
+            updateUI(); buildSystem();
         });
 
-        // Fenstergröße anpassen, falls man den Browser zieht
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('addVWall').addEventListener('click', () => {
+            wallsData.push({ id: idCounter++, type: 'V', pos: Math.floor(Schubladen_Breite/2) });
+            updateUI(); buildSystem();
         });
 
-        // 5. Animations-Schleife (Zeichnet das Bild 60x pro Sekunde)
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update(); // Für weiches Drehen mit der Maus
-            renderer.render(scene, camera);
+        buildSystem();
+
+        window.addEventListener('resize', () => { 
+            camera.aspect = window.innerWidth / window.innerHeight; 
+            camera.updateProjectionMatrix(); 
+            renderer.setSize(window.innerWidth, window.innerHeight); 
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() { 
+            requestAnimationFrame(animate); 
+            controls.update(); 
+            renderer.render(scene, camera); 
+            labelRenderer.render(scene, camera); // Zeichnet die 3D Texte!
         }
         animate();
     </script>

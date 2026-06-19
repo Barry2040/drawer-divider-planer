@@ -2,422 +2,82 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drawer Dividers - Web Planner</title>
+    <title>Drawer Dividers - Pro Planner V6.1</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #2c3e50; color: #333;}
-        #ui-panel { 
-            position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.95); 
-            padding: 20px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); 
-            width: 340px; max-height: 90vh; overflow-y: auto; z-index: 10;
-        }
-        h2 { margin-top: 0; color: #2c3e50; font-size: 20px; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px;}
-        h3 { font-size: 14px; margin: 20px 0 10px 0; color: #7f8c8d; text-transform: uppercase;}
-        
+        body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #2c3e50; }
+        #ui-panel { position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 12px; width: 340px; max-height: 90vh; overflow-y: auto; z-index: 10; box-shadow: 0 8px 16px rgba(0,0,0,0.3); }
         .input-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-weight: bold; font-size: 13px; }
-        .num-input { width: 60px; padding: 4px; border: 1px solid #bdc3c7; border-radius: 4px; text-align: right; font-family: monospace; font-size: 13px; }
-        input[type="range"] { width: 100%; margin-top: 8px; cursor: pointer; }
-        
-        .checkbox-group { background: #ecf0f1; padding: 10px; border-radius: 6px; margin-top: 10px;}
-        .checkbox-row { display: flex; gap: 15px; margin-top: 8px; }
-        .checkbox-row label { margin-top: 0; display: flex; align-items: center; gap: 5px; font-weight: normal; font-size: 13px;}
-        
-        .btn-group { display: flex; gap: 10px; margin-top: 15px;}
-        button { flex: 1; padding: 10px; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s;}
-        button:hover { opacity: 0.8; }
+        .num-input { width: 60px; padding: 4px; border: 1px solid #bdc3c7; border-radius: 4px; text-align: right; }
+        input[type="range"] { width: 100%; margin-top: 8px; }
+        .checkbox-group { background: #ecf0f1; padding: 10px; border-radius: 6px; margin-top: 10px; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        button { flex: 1; padding: 10px; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-hor { background: #3498db; }
         .btn-ver { background: #e67e22; }
-        
-        .wall-control { background: #f8f9fa; padding: 12px; border-radius: 6px; margin-top: 10px; border-left: 4px solid #bdc3c7; position: relative;}
-        .wall-control.hor { border-left-color: #3498db; }
-        .wall-control.ver { border-left-color: #e67e22; }
-        .del-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 12px; cursor: pointer;}
-        
-        .measurement-label {
-            color: #000; font-family: monospace; font-size: 13px; font-weight: bold;
-            background: rgba(255, 255, 255, 0.9); padding: 2px 6px; border-radius: 4px;
-            border: 1px solid #333; pointer-events: none; margin-top: -15px; white-space: nowrap;
-        }
+        .wall-control { background: #f8f9fa; padding: 10px; border-radius: 6px; margin-top: 10px; border-left: 4px solid #bdc3c7; position: relative; }
+        .del-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="ui-panel">
-        <h2>📐 Schubladen Planer</h2>
-        
-        <div class="input-row">
-            <label>Breite (X):</label>
-            <div><input type="number" id="numX" class="num-input" value="400"> mm</div>
-        </div>
-        <input type="range" id="drawerX" min="100" max="800" value="400">
-        
-        <div class="input-row">
-            <label>Tiefe (Y):</label>
-            <div><input type="number" id="numY" class="num-input" value="500"> mm</div>
-        </div>
-        <input type="range" id="drawerY" min="100" max="800" value="500">
-
-        <div class="input-row">
-            <label>Höhe (Z):</label>
-            <div><input type="number" id="numZ" class="num-input" value="80"> mm</div>
-        </div>
-        <input type="range" id="drawerZ" min="40" max="400" value="80">
-
-        <h3>System-Einstellungen</h3>
-        <div class="checkbox-group">
-            <label style="margin-top:0; font-size:13px; font-weight:bold;">Schienen platzieren an:</label>
-            <div class="checkbox-row">
-                <label><input type="checkbox" id="optRailL" checked> Links</label>
-                <label><input type="checkbox" id="optRailR" checked> Rechts</label>
-            </div>
-            <div class="checkbox-row">
-                <label><input type="checkbox" id="optRailF" checked> Vorne</label>
-                <label><input type="checkbox" id="optRailB" checked> Hinten</label>
-            </div>
-            <label style="margin-top:12px; font-size:13px; font-weight:bold;"><input type="checkbox" id="optSnap" checked> 🧲 An Rastern einrasten</label>
-        </div>
-
-        <div class="btn-group">
-            <button class="btn-hor" id="addHWall">+ Horizontal (X)</button>
-            <button class="btn-ver" id="addVWall">+ Vertikal (Y)</button>
-        </div>
-        
-        <h3>Wände Positionieren</h3>
-        <div id="wallsContainer"></div> 
+<div id="ui-panel">
+    <h2>📐 Schubladen Planer V6.1</h2>
+    <div class="input-row"><label>Breite (X):</label><div><input type="number" id="numX" class="num-input" value="400"> mm</div></div>
+    <input type="range" id="drawerX" min="100" max="800" value="400">
+    <div class="input-row"><label>Tiefe (Y):</label><div><input type="number" id="numY" class="num-input" value="500"> mm</div></div>
+    <input type="range" id="drawerY" min="100" max="800" value="500">
+    
+    <div class="checkbox-group">
+        <label style="font-size:13px; font-weight:bold;">Verbinder-Typ:</label>
+        <select id="selConnectorType" style="width:100%; margin-top:8px;">
+            <option value="cross">Kreuz-Verbinder</option>
+            <option value="t_piece">T-Verbinder</option>
+            <option value="corner">L-Winkel</option>
+            <option value="end">Endstück</option>
+        </select>
     </div>
 
-    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
-    <script type="importmap">
-        { "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-        }}
-    </script>
+    <div class="btn-group">
+        <button class="btn-hor" id="addHWall">+ Horiz. Wand</button>
+        <button class="btn-ver" id="addVWall">+ Vert. Wand</button>
+    </div>
+    <div id="wallsContainer"></div>
+</div>
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+<script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" }}
+</script>
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1e272e); 
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
-        camera.position.set(0, 800, 600);
-        
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        const labelRenderer = new CSS2DRenderer();
-        labelRenderer.setSize(window.innerWidth, window.innerHeight);
-        labelRenderer.domElement.style.position = 'absolute';
-        labelRenderer.domElement.style.top = '0px';
-        labelRenderer.domElement.style.pointerEvents = 'none';
-        document.body.appendChild(labelRenderer.domElement);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 3000);
+    camera.position.set(0, 800, 600);
+    const renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
+    const systemGroup = new THREE.Group();
+    scene.add(systemGroup);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-        dirLight.position.set(200, 500, 300);
-        scene.add(dirLight);
+    // Placeholder Logik - Wird ab jetzt modular erweitert
+    function buildSystem() {
+        systemGroup.clear();
+        // Hier bauen wir die Geometrie für Verbinder und Raster auf
+    }
 
-        const systemGroup = new THREE.Group();
-        scene.add(systemGroup);
-
-        // --- System Parameter ---
-        let Schubladen_Breite = 400;
-        let Schubladen_Tiefe = 500;
-        let Schubladen_Hoehe = 80;
-        
-        const System_Wand_Dicke = 2.0; 
-        const System_Wand_Hoehe = 40;
-        const Schlitz_Toleranz = 0.2;
-        const Schiene_Platten_Dicke = 2.5;
-        const Schiene_Zahn_Hoehe = 6.0;
-        const Schiene_Zahn_Dicke = 2.0;
-        const Verbinder_Arm_Laenge = 20.0; 
-        const Verbinder_Einschub_Tiefe = 14.0; // Fest eingestellt
-        const Verbinder_Aussenwand = 2.5;
-
-        const raster_mass = Schiene_Zahn_Dicke + System_Wand_Dicke + Schlitz_Toleranz;
-
-        const matFloor = new THREE.MeshLambertMaterial({ color: 0x95a5a6, transparent: true, opacity: 0.2 });
-        const matDrawerOuter = new THREE.MeshLambertMaterial({ color: 0x7f8c8d, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
-        const matRail = new THREE.MeshLambertMaterial({ color: 0x34495e });
-        const matWallH = new THREE.MeshLambertMaterial({ color: 0x3498db });
-        const matWallV = new THREE.MeshLambertMaterial({ color: 0xe67e22 });
-        const matConn = new THREE.MeshLambertMaterial({ color: 0xbdc3c7 });
-
-        let wallsData = [];
-        let idCounter = 0;
-
-        function getSnappedPosition(value, maxSpace, isHorizontalWall, hasL, hasR, hasF, hasB) {
-            if (!document.getElementById('optSnap').checked) return value;
-            
-            const railsActive = isHorizontalWall ? (hasL || hasR) : (hasF || hasB);
-            if (!railsActive) return value;
-
-            const anzahl = Math.floor(maxSpace / raster_mass);
-            const belegt = (anzahl * Schiene_Zahn_Dicke) + ((anzahl - 1) * (System_Wand_Dicke + Schlitz_Toleranz));
-            const startOffset = (maxSpace - belegt) / 2;
-            
-            const halfWall = (System_Wand_Dicke + Schlitz_Toleranz) / 2;
-            const slotStart = startOffset + Schiene_Zahn_Dicke;
-            
-            let closestSlotIdx = Math.round((value - slotStart - halfWall) / raster_mass);
-            if (closestSlotIdx < 0) closestSlotIdx = 0;
-            if (closestSlotIdx >= anzahl - 1) closestSlotIdx = anzahl - 2;
-
-            return slotStart + (closestSlotIdx * raster_mass) + halfWall;
-        }
-
-        function buildSystem() {
-            systemGroup.clear();
-            systemGroup.position.set(-Schubladen_Breite/2, 0, -Schubladen_Tiefe/2);
-
-            const floor = new THREE.Mesh(new THREE.BoxGeometry(Schubladen_Breite, 2, Schubladen_Tiefe), matFloor);
-            floor.position.set(Schubladen_Breite/2, -1, Schubladen_Tiefe/2);
-            systemGroup.add(floor);
-
-            const dwL = new THREE.Mesh(new THREE.BoxGeometry(2, Schubladen_Hoehe, Schubladen_Tiefe), matDrawerOuter);
-            dwL.position.set(-1, Schubladen_Hoehe/2, Schubladen_Tiefe/2);
-            systemGroup.add(dwL);
-
-            const dwR = new THREE.Mesh(new THREE.BoxGeometry(2, Schubladen_Hoehe, Schubladen_Tiefe), matDrawerOuter);
-            dwR.position.set(Schubladen_Breite + 1, Schubladen_Hoehe/2, Schubladen_Tiefe/2);
-            systemGroup.add(dwR);
-
-            const dwB = new THREE.Mesh(new THREE.BoxGeometry(Schubladen_Breite, Schubladen_Hoehe, 2), matDrawerOuter);
-            dwB.position.set(Schubladen_Breite/2, Schubladen_Hoehe/2, -1);
-            systemGroup.add(dwB);
-
-            const dwF = new THREE.Mesh(new THREE.BoxGeometry(Schubladen_Breite, Schubladen_Hoehe, 2), matDrawerOuter);
-            dwF.position.set(Schubladen_Breite/2, Schubladen_Hoehe/2, Schubladen_Tiefe + 1);
-            systemGroup.add(dwF);
-
-            const hasL = document.getElementById('optRailL').checked;
-            const hasR = document.getElementById('optRailR').checked;
-            const hasF = document.getElementById('optRailF').checked;
-            const hasB = document.getElementById('optRailB').checked;
-            
-            const Verbinder_Luecke = Verbinder_Arm_Laenge - Verbinder_Einschub_Tiefe; 
-            const Verbinder_Breite = System_Wand_Dicke + Schlitz_Toleranz + (2 * Verbinder_Aussenwand);
-
-            let min_x = hasL ? Schiene_Platten_Dicke : 0;
-            let max_x = hasR ? Schubladen_Breite - Schiene_Platten_Dicke : Schubladen_Breite;
-            let min_y = hasB ? Schiene_Platten_Dicke : 0;
-            let max_y = hasF ? Schubladen_Tiefe - Schiene_Platten_Dicke : Schubladen_Tiefe;
-
-            // Raster Y
-            function drawRailY(x_pos, isRight) {
-                let anzahl = Math.floor(Schubladen_Tiefe / raster_mass);
-                let belegt = (anzahl * Schiene_Zahn_Dicke) + ((anzahl - 1) * (System_Wand_Dicke + Schlitz_Toleranz));
-                let start_y = (Schubladen_Tiefe - belegt) / 2;
-                
-                let base = new THREE.Mesh(new THREE.BoxGeometry(Schiene_Platten_Dicke, System_Wand_Hoehe, Schubladen_Tiefe), matRail);
-                base.position.set(isRight ? x_pos - Schiene_Platten_Dicke/2 : x_pos + Schiene_Platten_Dicke/2, System_Wand_Hoehe/2, Schubladen_Tiefe/2);
-                systemGroup.add(base);
-
-                let zahn_x = isRight ? x_pos - Schiene_Platten_Dicke - Schiene_Zahn_Hoehe/2 : x_pos + Schiene_Platten_Dicke + Schiene_Zahn_Hoehe/2;
-                let zahnGeo = new THREE.BoxGeometry(Schiene_Zahn_Hoehe, System_Wand_Hoehe, Schiene_Zahn_Dicke);
-                
-                for(let i=0; i<anzahl; i++) {
-                    let zahn = new THREE.Mesh(zahnGeo, matRail);
-                    zahn.position.set(zahn_x, System_Wand_Hoehe/2, start_y + (i * raster_mass) + Schiene_Zahn_Dicke/2);
-                    systemGroup.add(zahn);
-                }
-            }
-            if(hasL) drawRailY(0, false); 
-            if(hasR) drawRailY(Schubladen_Breite, true);
-
-            // Raster X
-            function drawRailX(y_pos, isBack) {
-                let schiene_laenge = max_x - min_x;
-                let anzahl = Math.floor(schiene_laenge / raster_mass);
-                let belegt = (anzahl * Schiene_Zahn_Dicke) + ((anzahl - 1) * (System_Wand_Dicke + Schlitz_Toleranz));
-                let start_x = min_x + (schiene_laenge - belegt) / 2;
-                let center_x = min_x + (schiene_laenge / 2);
-
-                let base = new THREE.Mesh(new THREE.BoxGeometry(schiene_laenge, System_Wand_Hoehe, Schiene_Platten_Dicke), matRail);
-                base.position.set(center_x, System_Wand_Hoehe/2, isBack ? y_pos - Schiene_Platten_Dicke/2 : y_pos + Schiene_Platten_Dicke/2);
-                systemGroup.add(base);
-
-                let zahn_y = isBack ? y_pos - Schiene_Platten_Dicke - Schiene_Zahn_Hoehe/2 : y_pos + Schiene_Platten_Dicke + Schiene_Zahn_Hoehe/2;
-                let zahnGeo = new THREE.BoxGeometry(Schiene_Zahn_Dicke, System_Wand_Hoehe, Schiene_Zahn_Hoehe);
-
-                for(let i=0; i<anzahl; i++) {
-                    let zahn = new THREE.Mesh(zahnGeo, matRail);
-                    zahn.position.set(start_x + (i * raster_mass) + Schiene_Zahn_Dicke/2, System_Wand_Hoehe/2, zahn_y);
-                    systemGroup.add(zahn);
-                }
-            }
-            if(hasB) drawRailX(0, false); 
-            if(hasF) drawRailX(Schubladen_Tiefe, true);
-
-            // Snapping
-            wallsData.forEach(w => {
-                if(w.type === 'H') w.snappedPos = getSnappedPosition(w.pos, Schubladen_Tiefe, true, hasL, hasR, hasF, hasB);
-                else w.snappedPos = getSnappedPosition(w.pos, Schubladen_Breite, false, hasL, hasR, hasF, hasB);
-            });
-
-            let h_pos = wallsData.filter(w => w.type === 'H').map(w => w.snappedPos).sort((a,b)=>a-b);
-            let v_pos = wallsData.filter(w => w.type === 'V').map(w => w.snappedPos).sort((a,b)=>a-b);
-
-            if (h_pos.length > 0 && v_pos.length > 0) {
-                h_pos.forEach(y => {
-                    v_pos.forEach(x => {
-                        let centerBox = new THREE.Mesh(new THREE.BoxGeometry(Verbinder_Breite, System_Wand_Hoehe, Verbinder_Breite), matConn);
-                        centerBox.position.set(x, System_Wand_Hoehe/2, y);
-                        systemGroup.add(centerBox);
-
-                        let armX = new THREE.Mesh(new THREE.BoxGeometry(Verbinder_Arm_Laenge*2, System_Wand_Hoehe, Verbinder_Breite), matConn);
-                        armX.position.set(x, System_Wand_Hoehe/2, y);
-                        systemGroup.add(armX);
-
-                        let armY = new THREE.Mesh(new THREE.BoxGeometry(Verbinder_Breite, System_Wand_Hoehe, Verbinder_Arm_Laenge*2), matConn);
-                        armY.position.set(x, System_Wand_Hoehe/2, y);
-                        systemGroup.add(armY);
-                    });
-                });
-            }
-
-            h_pos.forEach(y => {
-                let pts_x = [min_x, ...v_pos, max_x];
-                for(let i=0; i<pts_x.length-1; i++) {
-                    let x1 = pts_x[i]; let x2 = pts_x[i+1];
-                    let gap1 = (i === 0) ? 0 : Verbinder_Luecke;
-                    let gap2 = (i === pts_x.length-2) ? 0 : Verbinder_Luecke;
-                    
-                    let seg_len = (x2 - gap2) - (x1 + gap1);
-                    let center_x = (x1 + gap1 + x2 - gap2) / 2;
-                    
-                    if (seg_len > 0) {
-                        let mesh = new THREE.Mesh(new THREE.BoxGeometry(seg_len, System_Wand_Hoehe, System_Wand_Dicke), matWallH);
-                        mesh.position.set(center_x, System_Wand_Hoehe/2, y);
-                        systemGroup.add(mesh);
-                        createLabel(`${seg_len.toFixed(1)}`, center_x, System_Wand_Hoehe, y);
-                    }
-                }
-            });
-
-            v_pos.forEach(x => {
-                let pts_y = [min_y, ...h_pos, max_y];
-                for(let i=0; i<pts_y.length-1; i++) {
-                    let y1 = pts_y[i]; let y2 = pts_y[i+1];
-                    let gap1 = (i === 0) ? 0 : Verbinder_Luecke;
-                    let gap2 = (i === pts_y.length-2) ? 0 : Verbinder_Luecke;
-                    
-                    let seg_len = (y2 - gap2) - (y1 + gap1);
-                    let center_y = (y1 + gap1 + y2 - gap2) / 2;
-                    
-                    if (seg_len > 0) {
-                        let mesh = new THREE.Mesh(new THREE.BoxGeometry(System_Wand_Dicke, System_Wand_Hoehe, seg_len), matWallV);
-                        mesh.position.set(x, System_Wand_Hoehe/2, center_y);
-                        systemGroup.add(mesh);
-                        createLabel(`${seg_len.toFixed(1)}`, x, System_Wand_Hoehe, center_y);
-                    }
-                }
-            });
-        }
-
-        function createLabel(text, x, y, z) {
-            const div = document.createElement('div');
-            div.className = 'measurement-label';
-            div.textContent = text;
-            const label = new CSS2DObject(div);
-            label.position.set(x, y, z);
-            systemGroup.add(label);
-        }
-
-        function updateUI() {
-            const container = document.getElementById('wallsContainer');
-            container.innerHTML = '';
-            
-            wallsData.forEach(w => {
-                const div = document.createElement('div');
-                div.className = `wall-control ${w.type === 'H' ? 'hor' : 'ver'}`;
-                const name = w.type === 'H' ? "Horizontale Wand" : "Vertikale Wand";
-                const maxPos = w.type === 'H' ? Schubladen_Tiefe - 10 : Schubladen_Breite - 10;
-                
-                div.innerHTML = `
-                    <button class="del-btn" data-id="${w.id}">X</button>
-                    <strong>${name}</strong>
-                    <div class="input-row">
-                        <label style="margin:0;">Position:</label>
-                        <div><input type="number" class="num-input" id="wnum${w.id}" value="${w.snappedPos ? w.snappedPos.toFixed(1) : w.pos}"> mm</div>
-                    </div>
-                    <input type="range" min="10" max="${maxPos}" value="${w.pos}" id="wslide${w.id}">
-                `;
-                container.appendChild(div);
-
-                // Slider Event
-                document.getElementById(`wslide${w.id}`).addEventListener('input', (e) => {
-                    w.pos = parseFloat(e.target.value);
-                    buildSystem();
-                    document.getElementById(`wnum${w.id}`).value = w.snappedPos.toFixed(1);
-                });
-
-                // Number Input Event
-                document.getElementById(`wnum${w.id}`).addEventListener('change', (e) => {
-                    w.pos = parseFloat(e.target.value);
-                    buildSystem();
-                    document.getElementById(`wslide${w.id}`).value = w.snappedPos;
-                    document.getElementById(`wnum${w.id}`).value = w.snappedPos.toFixed(1);
-                });
-
-                div.querySelector('.del-btn').addEventListener('click', () => {
-                    wallsData = wallsData.filter(wd => wd.id !== w.id);
-                    updateUI(); buildSystem();
-                });
-            });
-        }
-
-        function syncDimensions(axis, val) {
-            if (axis === 'X') { Schubladen_Breite = val; document.getElementById('drawerX').value = val; document.getElementById('numX').value = val; }
-            if (axis === 'Y') { Schubladen_Tiefe = val; document.getElementById('drawerY').value = val; document.getElementById('numY').value = val; }
-            if (axis === 'Z') { Schubladen_Hoehe = val; document.getElementById('drawerZ').value = val; document.getElementById('numZ').value = val; }
-            buildSystem(); updateUI();
-        }
-
-        // Global Listeners für X, Y, Z (Slider & Number)
-        ['X', 'Y', 'Z'].forEach(axis => {
-            document.getElementById(`drawer${axis}`).addEventListener('input', (e) => syncDimensions(axis, parseInt(e.target.value)));
-            document.getElementById(`num${axis}`).addEventListener('change', (e) => syncDimensions(axis, parseInt(e.target.value)));
-        });
-
-        // Checkboxen
-        ['optRailL', 'optRailR', 'optRailF', 'optRailB', 'optSnap'].forEach(id => {
-            document.getElementById(id).addEventListener('change', () => { buildSystem(); updateUI(); });
-        });
-
-        document.getElementById('addHWall').addEventListener('click', () => {
-            wallsData.push({ id: idCounter++, type: 'H', pos: Math.floor(Schubladen_Tiefe/2) });
-            buildSystem(); updateUI();
-        });
-
-        document.getElementById('addVWall').addEventListener('click', () => {
-            wallsData.push({ id: idCounter++, type: 'V', pos: Math.floor(Schubladen_Breite/2) });
-            buildSystem(); updateUI();
-        });
-
+    // Event Listener für UI
+    document.getElementById('numX').addEventListener('change', buildSystem);
+    document.getElementById('drawerX').addEventListener('input', (e) => {
+        document.getElementById('numX').value = e.target.value;
         buildSystem();
+    });
 
-        window.addEventListener('resize', () => { 
-            camera.aspect = window.innerWidth / window.innerHeight; 
-            camera.updateProjectionMatrix(); 
-            renderer.setSize(window.innerWidth, window.innerHeight); 
-            labelRenderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        function animate() { 
-            requestAnimationFrame(animate); 
-            controls.update(); 
-            renderer.render(scene, camera); 
-            labelRenderer.render(scene, camera);
-        }
-        animate();
-    </script>
+    buildSystem();
+    function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
+    animate();
+</script>
 </body>
 </html>

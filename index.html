@@ -13,12 +13,14 @@
         }
         h2 { margin-top: 0; color: #2c3e50; font-size: 20px; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px;}
         h3 { font-size: 14px; margin: 20px 0 10px 0; color: #7f8c8d; text-transform: uppercase;}
-        label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; }
+        label { display: block; margin-top: 10px; font-weight: bold; font-size: 13px; }
         input[type="range"] { width: 100%; margin-top: 8px; cursor: pointer; }
+        .checkbox-group { background: #ecf0f1; padding: 10px; border-radius: 6px; margin-top: 10px;}
+        .checkbox-row { display: flex; gap: 15px; margin-top: 8px; }
+        .checkbox-row label { margin-top: 0; display: flex; align-items: center; gap: 5px; font-weight: normal;}
+        select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #bdc3c7; margin-top: 5px; font-family: inherit;}
         .btn-group { display: flex; gap: 10px; margin-top: 15px;}
-        button { 
-            flex: 1; padding: 10px; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s;
-        }
+        button { flex: 1; padding: 10px; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s;}
         button:hover { opacity: 0.8; }
         .btn-hor { background: #3498db; }
         .btn-ver { background: #e67e22; }
@@ -27,19 +29,10 @@
         .wall-control.ver { border-left-color: #e67e22; }
         .del-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 12px; cursor: pointer;}
         
-        /* Das ist das Styling für die 3D Maßangaben! */
         .measurement-label {
-            color: #000;
-            font-family: monospace;
-            font-size: 13px;
-            font-weight: bold;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: 1px solid #333;
-            pointer-events: none;
-            margin-top: -15px;
-            white-space: nowrap;
+            color: #000; font-family: monospace; font-size: 13px; font-weight: bold;
+            background: rgba(255, 255, 255, 0.9); padding: 2px 6px; border-radius: 4px;
+            border: 1px solid #333; pointer-events: none; margin-top: -15px; white-space: nowrap;
         }
     </style>
 </head>
@@ -48,11 +41,35 @@
     <div id="ui-panel">
         <h2>📐 Schubladen Planer</h2>
         
-        <label>Schubladen-Breite: <span id="valX">400</span> mm</label>
+        <label>Breite (X): <span id="valX">400</span> mm</label>
         <input type="range" id="drawerX" min="100" max="800" value="400">
         
-        <label>Schubladen-Tiefe: <span id="valY">500</span> mm</label>
+        <label>Tiefe (Y): <span id="valY">500</span> mm</label>
         <input type="range" id="drawerY" min="100" max="800" value="500">
+
+        <label>Höhe (Z): <span id="valZ">80</span> mm</label>
+        <input type="range" id="drawerZ" min="40" max="400" value="80">
+
+        <h3>System-Einstellungen</h3>
+        <div class="checkbox-group">
+            <label style="margin-top:0;">Schienen platzieren an:</label>
+            <div class="checkbox-row">
+                <label><input type="checkbox" id="optRailL" checked> Links</label>
+                <label><input type="checkbox" id="optRailR" checked> Rechts</label>
+            </div>
+            <div class="checkbox-row">
+                <label><input type="checkbox" id="optRailF" checked> Vorne</label>
+                <label><input type="checkbox" id="optRailB" checked> Hinten</label>
+            </div>
+            <label style="margin-top:12px;"><input type="checkbox" id="optSnap" checked> 🧲 An Rastern einrasten</label>
+        </div>
+
+        <label>Verbinder-Einschubtiefe:</label>
+        <select id="optConnector">
+            <option value="14">Standard (14 mm Einschub)</option>
+            <option value="10">Kurz (10 mm Einschub)</option>
+            <option value="18">Tief (18 mm Einschub)</option>
+        </select>
 
         <div class="btn-group">
             <button class="btn-hor" id="addHWall">+ Horizontal (X)</button>
@@ -63,7 +80,6 @@
         <div id="wallsContainer"></div> 
     </div>
 
-    <!-- Import Maps für Three.js -->
     <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
     <script type="importmap">
         { "imports": {
@@ -77,7 +93,6 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-        // 1. Szene & WebGL Renderer
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x1e272e); 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
@@ -87,7 +102,6 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // 2. CSS2D Renderer für die 3D Texte einrichten!
         const labelRenderer = new CSS2DRenderer();
         labelRenderer.setSize(window.innerWidth, window.innerHeight);
         labelRenderer.domElement.style.position = 'absolute';
@@ -98,19 +112,18 @@
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
 
-        // Licht
         scene.add(new THREE.AmbientLight(0xffffff, 0.7));
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
         dirLight.position.set(200, 500, 300);
         scene.add(dirLight);
 
-        // Geometrie-Container
         const systemGroup = new THREE.Group();
         scene.add(systemGroup);
 
-        // --- SYSTEM PARAMETER (Aus deinem OpenSCAD) ---
+        // --- System Parameter ---
         let Schubladen_Breite = 400;
         let Schubladen_Tiefe = 500;
+        let Schubladen_Hoehe = 80;
         
         const System_Wand_Dicke = 2.0; 
         const System_Wand_Hoehe = 40;
@@ -119,15 +132,12 @@
         const Schiene_Zahn_Hoehe = 6.0;
         const Schiene_Zahn_Dicke = 2.0;
         const Verbinder_Arm_Laenge = 20.0; 
-        const Verbinder_Einschub_Tiefe = 14.0;
         const Verbinder_Aussenwand = 2.5;
 
         const raster_mass = Schiene_Zahn_Dicke + System_Wand_Dicke + Schlitz_Toleranz;
-        const Verbinder_Luecke = Verbinder_Arm_Laenge - Verbinder_Einschub_Tiefe; 
-        const Verbinder_Breite = System_Wand_Dicke + Schlitz_Toleranz + (2 * Verbinder_Aussenwand);
 
-        // Materialien
         const matFloor = new THREE.MeshLambertMaterial({ color: 0x95a5a6, transparent: true, opacity: 0.2 });
+        const matDrawerOuter = new THREE.MeshLambertMaterial({ color: 0x7f8c8d, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
         const matRail = new THREE.MeshLambertMaterial({ color: 0x34495e });
         const matWallH = new THREE.MeshLambertMaterial({ color: 0x3498db });
         const matWallV = new THREE.MeshLambertMaterial({ color: 0xe67e22 });
@@ -136,34 +146,72 @@
         let wallsData = [];
         let idCounter = 0;
 
+        function getSnappedPosition(value, maxSpace, isHorizontalWall, hasL, hasR, hasF, hasB) {
+            if (!document.getElementById('optSnap').checked) return value;
+            
+            const railsActive = isHorizontalWall ? (hasL || hasR) : (hasF || hasB);
+            if (!railsActive) return value;
+
+            const anzahl = Math.floor(maxSpace / raster_mass);
+            const belegt = (anzahl * Schiene_Zahn_Dicke) + ((anzahl - 1) * (System_Wand_Dicke + Schlitz_Toleranz));
+            const startOffset = (maxSpace - belegt) / 2;
+            
+            const halfWall = (System_Wand_Dicke + Schlitz_Toleranz) / 2;
+            const slotStart = startOffset + Schiene_Zahn_Dicke;
+            
+            let closestSlotIdx = Math.round((value - slotStart - halfWall) / raster_mass);
+            if (closestSlotIdx < 0) closestSlotIdx = 0;
+            if (closestSlotIdx >= anzahl - 1) closestSlotIdx = anzahl - 2;
+
+            return slotStart + (closestSlotIdx * raster_mass) + halfWall;
+        }
+
         function buildSystem() {
             systemGroup.clear();
-            
-            // Setze den Nullpunkt nach unten links, damit die Mathematik wie in OpenSCAD funktioniert
             systemGroup.position.set(-Schubladen_Breite/2, 0, -Schubladen_Tiefe/2);
 
-            // 1. Bodenplatte
+            // Transparente Schubladen-Box (Boden + 4 Wände)
             const floor = new THREE.Mesh(new THREE.BoxGeometry(Schubladen_Breite, 2, Schubladen_Tiefe), matFloor);
             floor.position.set(Schubladen_Breite/2, -1, Schubladen_Tiefe/2);
             systemGroup.add(floor);
 
-            // 2. Wände sortieren
-            let h_pos = wallsData.filter(w => w.type === 'H').map(w => w.pos).sort((a,b)=>a-b);
-            let v_pos = wallsData.filter(w => w.type === 'V').map(w => w.pos).sort((a,b)=>a-b);
+            const dwL = new THREE.Mesh(new THREE.BoxGeometry(2, Schubladen_Hoehe, Schubladen_Tiefe), matDrawerOuter);
+            dwL.position.set(-1, Schubladen_Hoehe/2, Schubladen_Tiefe/2);
+            systemGroup.add(dwL);
 
-            let min_x = Schiene_Platten_Dicke;
-            let max_x = Schubladen_Breite - Schiene_Platten_Dicke;
-            let min_y = Schiene_Platten_Dicke;
-            let max_y = Schubladen_Tiefe - Schiene_Platten_Dicke;
+            const dwR = new THREE.Mesh(new THREE.BoxGeometry(2, Schubladen_Hoehe, Schubladen_Tiefe), matDrawerOuter);
+            dwR.position.set(Schubladen_Breite + 1, Schubladen_Hoehe/2, Schubladen_Tiefe/2);
+            systemGroup.add(dwR);
 
-            // 3. Raster-Schienen (Exakt gemodelt mit Zähnen!)
+            const dwB = new THREE.Mesh(new THREE.BoxGeometry(Schubladen_Breite, Schubladen_Hoehe, 2), matDrawerOuter);
+            dwB.position.set(Schubladen_Breite/2, Schubladen_Hoehe/2, -1);
+            systemGroup.add(dwB);
+
+            const dwF = new THREE.Mesh(new THREE.BoxGeometry(Schubladen_Breite, Schubladen_Hoehe, 2), matDrawerOuter);
+            dwF.position.set(Schubladen_Breite/2, Schubladen_Hoehe/2, Schubladen_Tiefe + 1);
+            systemGroup.add(dwF);
+
+            const hasL = document.getElementById('optRailL').checked;
+            const hasR = document.getElementById('optRailR').checked;
+            const hasF = document.getElementById('optRailF').checked;
+            const hasB = document.getElementById('optRailB').checked;
+            
+            const Verbinder_Einschub_Tiefe = parseFloat(document.getElementById('optConnector').value);
+            const Verbinder_Luecke = Verbinder_Arm_Laenge - Verbinder_Einschub_Tiefe; 
+            const Verbinder_Breite = System_Wand_Dicke + Schlitz_Toleranz + (2 * Verbinder_Aussenwand);
+
+            let min_x = hasL ? Schiene_Platten_Dicke : 0;
+            let max_x = hasR ? Schubladen_Breite - Schiene_Platten_Dicke : Schubladen_Breite;
+            let min_y = hasB ? Schiene_Platten_Dicke : 0;
+            let max_y = hasF ? Schubladen_Tiefe - Schiene_Platten_Dicke : Schubladen_Tiefe;
+
+            // Raster-Schienen Y (Links/Rechts)
             function drawRailY(x_pos, isRight) {
                 let anzahl = Math.floor(Schubladen_Tiefe / raster_mass);
                 let belegt = (anzahl * Schiene_Zahn_Dicke) + ((anzahl - 1) * (System_Wand_Dicke + Schlitz_Toleranz));
                 let start_y = (Schubladen_Tiefe - belegt) / 2;
                 
-                let baseGeo = new THREE.BoxGeometry(Schiene_Platten_Dicke, System_Wand_Hoehe, Schubladen_Tiefe);
-                let base = new THREE.Mesh(baseGeo, matRail);
+                let base = new THREE.Mesh(new THREE.BoxGeometry(Schiene_Platten_Dicke, System_Wand_Hoehe, Schubladen_Tiefe), matRail);
                 base.position.set(isRight ? x_pos - Schiene_Platten_Dicke/2 : x_pos + Schiene_Platten_Dicke/2, System_Wand_Hoehe/2, Schubladen_Tiefe/2);
                 systemGroup.add(base);
 
@@ -176,18 +224,19 @@
                     systemGroup.add(zahn);
                 }
             }
-            drawRailY(0, false);
-            drawRailY(Schubladen_Breite, true);
+            if(hasL) drawRailY(0, false); 
+            if(hasR) drawRailY(Schubladen_Breite, true);
 
+            // Raster-Schienen X (Vorne/Hinten)
             function drawRailX(y_pos, isBack) {
-                let schiene_laenge = Schubladen_Breite - (2 * Schiene_Platten_Dicke);
+                let schiene_laenge = max_x - min_x;
                 let anzahl = Math.floor(schiene_laenge / raster_mass);
                 let belegt = (anzahl * Schiene_Zahn_Dicke) + ((anzahl - 1) * (System_Wand_Dicke + Schlitz_Toleranz));
-                let start_x = (Schubladen_Breite - belegt) / 2;
+                let start_x = min_x + (schiene_laenge - belegt) / 2;
+                let center_x = min_x + (schiene_laenge / 2);
 
-                let baseGeo = new THREE.BoxGeometry(schiene_laenge, System_Wand_Hoehe, Schiene_Platten_Dicke);
-                let base = new THREE.Mesh(baseGeo, matRail);
-                base.position.set(Schubladen_Breite/2, System_Wand_Hoehe/2, isBack ? y_pos - Schiene_Platten_Dicke/2 : y_pos + Schiene_Platten_Dicke/2);
+                let base = new THREE.Mesh(new THREE.BoxGeometry(schiene_laenge, System_Wand_Hoehe, Schiene_Platten_Dicke), matRail);
+                base.position.set(center_x, System_Wand_Hoehe/2, isBack ? y_pos - Schiene_Platten_Dicke/2 : y_pos + Schiene_Platten_Dicke/2);
                 systemGroup.add(base);
 
                 let zahn_y = isBack ? y_pos - Schiene_Platten_Dicke - Schiene_Zahn_Hoehe/2 : y_pos + Schiene_Platten_Dicke + Schiene_Zahn_Hoehe/2;
@@ -199,10 +248,19 @@
                     systemGroup.add(zahn);
                 }
             }
-            drawRailX(0, false);
-            drawRailX(Schubladen_Tiefe, true);
+            if(hasB) drawRailX(0, false); 
+            if(hasF) drawRailX(Schubladen_Tiefe, true);
 
-            // 4. Verbinder zeichnen
+            // Snapping anwenden
+            wallsData.forEach(w => {
+                if(w.type === 'H') w.snappedPos = getSnappedPosition(w.pos, Schubladen_Tiefe, true, hasL, hasR, hasF, hasB);
+                else w.snappedPos = getSnappedPosition(w.pos, Schubladen_Breite, false, hasL, hasR, hasF, hasB);
+            });
+
+            let h_pos = wallsData.filter(w => w.type === 'H').map(w => w.snappedPos).sort((a,b)=>a-b);
+            let v_pos = wallsData.filter(w => w.type === 'V').map(w => w.snappedPos).sort((a,b)=>a-b);
+
+            // Verbinder
             if (h_pos.length > 0 && v_pos.length > 0) {
                 h_pos.forEach(y => {
                     v_pos.forEach(x => {
@@ -221,12 +279,11 @@
                 });
             }
 
-            // 5. Horizontale Segmente (inklusive Math-Labels)
+            // Horizontale Wände
             h_pos.forEach(y => {
                 let pts_x = [min_x, ...v_pos, max_x];
                 for(let i=0; i<pts_x.length-1; i++) {
-                    let x1 = pts_x[i];
-                    let x2 = pts_x[i+1];
+                    let x1 = pts_x[i]; let x2 = pts_x[i+1];
                     let gap1 = (i === 0) ? 0 : Verbinder_Luecke;
                     let gap2 = (i === pts_x.length-2) ? 0 : Verbinder_Luecke;
                     
@@ -237,19 +294,16 @@
                         let mesh = new THREE.Mesh(new THREE.BoxGeometry(seg_len, System_Wand_Hoehe, System_Wand_Dicke), matWallH);
                         mesh.position.set(center_x, System_Wand_Hoehe/2, y);
                         systemGroup.add(mesh);
-
-                        // 3D Text Label!
-                        createLabel(`${seg_len.toFixed(1)} mm`, center_x, System_Wand_Hoehe, y);
+                        createLabel(`${seg_len.toFixed(1)}`, center_x, System_Wand_Hoehe, y);
                     }
                 }
             });
 
-            // 6. Vertikale Segmente (inklusive Math-Labels)
+            // Vertikale Wände
             v_pos.forEach(x => {
                 let pts_y = [min_y, ...h_pos, max_y];
                 for(let i=0; i<pts_y.length-1; i++) {
-                    let y1 = pts_y[i];
-                    let y2 = pts_y[i+1];
+                    let y1 = pts_y[i]; let y2 = pts_y[i+1];
                     let gap1 = (i === 0) ? 0 : Verbinder_Luecke;
                     let gap2 = (i === pts_y.length-2) ? 0 : Verbinder_Luecke;
                     
@@ -260,15 +314,12 @@
                         let mesh = new THREE.Mesh(new THREE.BoxGeometry(System_Wand_Dicke, System_Wand_Hoehe, seg_len), matWallV);
                         mesh.position.set(x, System_Wand_Hoehe/2, center_y);
                         systemGroup.add(mesh);
-
-                        // 3D Text Label!
-                        createLabel(`${seg_len.toFixed(1)} mm`, x, System_Wand_Hoehe, center_y);
+                        createLabel(`${seg_len.toFixed(1)}`, x, System_Wand_Hoehe, center_y);
                     }
                 }
             });
         }
 
-        // Hilfsfunktion für die 3D Labels
         function createLabel(text, x, y, z) {
             const div = document.createElement('div');
             div.className = 'measurement-label';
@@ -291,37 +342,47 @@
                 div.innerHTML = `
                     <button class="del-btn" data-id="${w.id}">X</button>
                     <strong>${name}</strong>
-                    <label>Position: <span id="wval${w.id}">${w.pos}</span> mm</label>
+                    <label>Position: <span id="wval${w.id}">${w.snappedPos ? w.snappedPos.toFixed(1) : w.pos}</span> mm</label>
                     <input type="range" min="10" max="${maxPos}" value="${w.pos}" id="wslide${w.id}">
                 `;
                 container.appendChild(div);
 
                 document.getElementById(`wslide${w.id}`).addEventListener('input', (e) => {
                     w.pos = parseInt(e.target.value);
-                    document.getElementById(`wval${w.id}`).innerText = w.pos;
                     buildSystem();
+                    document.getElementById(`wval${w.id}`).innerText = w.snappedPos.toFixed(1);
                 });
 
                 div.querySelector('.del-btn').addEventListener('click', () => {
                     wallsData = wallsData.filter(wd => wd.id !== w.id);
-                    updateUI();
-                    buildSystem();
+                    updateUI(); buildSystem();
                 });
             });
         }
 
-        // Listeners
-        document.getElementById('drawerX').addEventListener('input', (e) => { Schubladen_Breite = parseInt(e.target.value); document.getElementById('valX').innerText = Schubladen_Breite; updateUI(); buildSystem(); });
-        document.getElementById('drawerY').addEventListener('input', (e) => { Schubladen_Tiefe = parseInt(e.target.value); document.getElementById('valY').innerText = Schubladen_Tiefe; updateUI(); buildSystem(); });
+        // Global Listeners
+        ['drawerX', 'drawerY', 'drawerZ', 'optRailL', 'optRailR', 'optRailF', 'optRailB', 'optSnap', 'optConnector'].forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                if (id === 'drawerX') Schubladen_Breite = parseInt(e.target.value);
+                if (id === 'drawerY') Schubladen_Tiefe = parseInt(e.target.value);
+                if (id === 'drawerZ') Schubladen_Hoehe = parseInt(e.target.value);
+                
+                if (document.getElementById('valX')) document.getElementById('valX').innerText = Schubladen_Breite;
+                if (document.getElementById('valY')) document.getElementById('valY').innerText = Schubladen_Tiefe;
+                if (document.getElementById('valZ')) document.getElementById('valZ').innerText = Schubladen_Hoehe;
+                
+                buildSystem(); updateUI();
+            });
+        });
 
         document.getElementById('addHWall').addEventListener('click', () => {
             wallsData.push({ id: idCounter++, type: 'H', pos: Math.floor(Schubladen_Tiefe/2) });
-            updateUI(); buildSystem();
+            buildSystem(); updateUI();
         });
 
         document.getElementById('addVWall').addEventListener('click', () => {
             wallsData.push({ id: idCounter++, type: 'V', pos: Math.floor(Schubladen_Breite/2) });
-            updateUI(); buildSystem();
+            buildSystem(); updateUI();
         });
 
         buildSystem();
@@ -337,7 +398,7 @@
             requestAnimationFrame(animate); 
             controls.update(); 
             renderer.render(scene, camera); 
-            labelRenderer.render(scene, camera); // Zeichnet die 3D Texte!
+            labelRenderer.render(scene, camera);
         }
         animate();
     </script>

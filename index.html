@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Drawer Dividers - Web Planer</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #2c3e50;
+        }
+        #ui-panel { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2); 
+            width: 320px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        h2 { margin-top: 0; color: #2c3e50; font-size: 20px; }
+        label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #34495e; }
+        input[type="range"] { width: 100%; margin-top: 8px; cursor: pointer; }
+        button { 
+            margin-top: 20px; 
+            width: 100%; 
+            padding: 10px; 
+            background: #27ae60; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover { background: #2ecc71; }
+        .wall-control { background: #ecf0f1; padding: 10px; border-radius: 6px; margin-top: 10px; border-left: 4px solid #3498db; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <h2>📐 Schubladen Planer</h2>
+        
+        <label>Schubladen-Breite: <span id="valX">400</span> mm</label>
+        <input type="range" id="drawerX" min="150" max="800" value="400">
+        
+        <label>Schubladen-Tiefe: <span id="valY">500</span> mm</label>
+        <input type="range" id="drawerY" min="150" max="800" value="500">
+
+        <button id="addHWall">+ Horizontale Wand hinzufügen</button>
+        
+        <div id="wallsContainer"></div> 
+    </div>
+
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // 1. Szene, Kamera & Renderer einrichten
+        const scene = new THREE.Scene();
+        // Ein schönes, dunkles Maker-Grau als Hintergrund
+        scene.background = new THREE.Color(0x2c3e50); 
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
+        camera.position.set(0, 800, 600); // Schräg von oben gucken
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        // Weiche Schatten aktivieren
+        renderer.shadowMap.enabled = true; 
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // 2. Licht anmachen
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(300, 800, 300);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // 3. Variablen für unser System
+        const drawerGroup = new THREE.Group();
+        scene.add(drawerGroup);
+
+        let drawerWidth = 400;
+        let drawerDepth = 500;
+        const wallThickness = 2;
+        const wallHeight = 40;
+        const railThickness = 8.5; // Die dicke deiner Raster-Schienen
+
+        // Farben für die Bauteile
+        const floorMat = new THREE.MeshLambertMaterial({ color: 0xe0e0e0, transparent: true, opacity: 0.3 });
+        const railMat = new THREE.MeshLambertMaterial({ color: 0x34495e });
+        const wallMat = new THREE.MeshLambertMaterial({ color: 0x3498db });
+
+        const hWalls = []; // Speichert alle erstellten Wände
+
+        // Funktion: Baut die Grund-Schublade (Boden + Schienen)
+        function buildDrawer() {
+            // Alte Teile löschen
+            drawerGroup.clear();
+            hWalls.length = 0;
+            document.getElementById('wallsContainer').innerHTML = '';
+
+            // Virtueller Schubladenboden
+            const floorGeo = new THREE.BoxGeometry(drawerWidth, 2, drawerDepth);
+            const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+            floorMesh.receiveShadow = true;
+            drawerGroup.add(floorMesh);
+
+            // Raster-Schienen am Rand (Fürs erste als einfache Blöcke)
+            const railGeo = new THREE.BoxGeometry(railThickness, wallHeight, drawerDepth);
+            
+            const railL = new THREE.Mesh(railGeo, railMat);
+            railL.position.set(-drawerWidth/2 + railThickness/2, wallHeight/2, 0);
+            railL.castShadow = true;
+            drawerGroup.add(railL);
+
+            const railR = new THREE.Mesh(railGeo, railMat);
+            railR.position.set(drawerWidth/2 - railThickness/2, wallHeight/2, 0);
+            railR.castShadow = true;
+            drawerGroup.add(railR);
+        }
+
+        // Erstaufbau
+        buildDrawer();
+
+        // 4. UI-Logik (Was passiert, wenn man Knöpfe drückt)
+        document.getElementById('drawerX').addEventListener('input', (e) => {
+            drawerWidth = parseInt(e.target.value);
+            document.getElementById('valX').innerText = drawerWidth;
+            buildDrawer();
+        });
+
+        document.getElementById('drawerY').addEventListener('input', (e) => {
+            drawerDepth = parseInt(e.target.value);
+            document.getElementById('valY').innerText = drawerDepth;
+            buildDrawer();
+        });
+
+        // Wand hinzufügen
+        document.getElementById('addHWall').addEventListener('click', () => {
+            // Wandlänge berechnen (Breite minus linke und rechte Schiene)
+            const length = drawerWidth - (2 * railThickness);
+            
+            const wallGeo = new THREE.BoxGeometry(length, wallHeight, wallThickness);
+            const wallMesh = new THREE.Mesh(wallGeo, wallMat);
+            wallMesh.position.set(0, wallHeight/2, 0); // Start in der Mitte
+            wallMesh.castShadow = true;
+            
+            drawerGroup.add(wallMesh);
+            hWalls.push(wallMesh);
+
+            const index = hWalls.length - 1;
+            
+            // Neues HTML-Menü für diese Wand bauen
+            const container = document.getElementById('wallsContainer');
+            const div = document.createElement('div');
+            div.className = 'wall-control';
+            
+            // Min/Max für den Schieberegler so berechnen, dass die Wand in der Schublade bleibt
+            const maxPos = (drawerDepth / 2) - 5; 
+            const minPos = -maxPos;
+
+            div.innerHTML = `
+                <label>Wand ${index+1} Y-Position: <span id="wval${index}">0</span> mm</label>
+                <input type="range" min="${minPos}" max="${maxPos}" value="0" id="wslide${index}">
+            `;
+            container.appendChild(div);
+
+            // Regler-Bewegung auf die 3D-Wand übertragen
+            document.getElementById(`wslide${index}`).addEventListener('input', (e) => {
+                const pos = parseInt(e.target.value);
+                document.getElementById(`wval${index}`).innerText = pos;
+                hWalls[index].position.z = pos; // In 3D ist Z die Tiefe!
+            });
+        });
+
+        // Fenstergröße anpassen, falls man den Browser zieht
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 5. Animations-Schleife (Zeichnet das Bild 60x pro Sekunde)
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // Für weiches Drehen mit der Maus
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>

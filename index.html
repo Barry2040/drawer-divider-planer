@@ -13,17 +13,21 @@
         }
         h2 { margin-top: 0; color: #2c3e50; font-size: 20px; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px;}
         h3 { font-size: 14px; margin: 20px 0 10px 0; color: #7f8c8d; text-transform: uppercase;}
-        label { display: block; margin-top: 10px; font-weight: bold; font-size: 13px; }
+        
+        .input-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-weight: bold; font-size: 13px; }
+        .num-input { width: 60px; padding: 4px; border: 1px solid #bdc3c7; border-radius: 4px; text-align: right; font-family: monospace; font-size: 13px; }
         input[type="range"] { width: 100%; margin-top: 8px; cursor: pointer; }
+        
         .checkbox-group { background: #ecf0f1; padding: 10px; border-radius: 6px; margin-top: 10px;}
         .checkbox-row { display: flex; gap: 15px; margin-top: 8px; }
-        .checkbox-row label { margin-top: 0; display: flex; align-items: center; gap: 5px; font-weight: normal;}
-        select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #bdc3c7; margin-top: 5px; font-family: inherit;}
+        .checkbox-row label { margin-top: 0; display: flex; align-items: center; gap: 5px; font-weight: normal; font-size: 13px;}
+        
         .btn-group { display: flex; gap: 10px; margin-top: 15px;}
         button { flex: 1; padding: 10px; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s;}
         button:hover { opacity: 0.8; }
         .btn-hor { background: #3498db; }
         .btn-ver { background: #e67e22; }
+        
         .wall-control { background: #f8f9fa; padding: 12px; border-radius: 6px; margin-top: 10px; border-left: 4px solid #bdc3c7; position: relative;}
         .wall-control.hor { border-left-color: #3498db; }
         .wall-control.ver { border-left-color: #e67e22; }
@@ -41,18 +45,27 @@
     <div id="ui-panel">
         <h2>📐 Schubladen Planer</h2>
         
-        <label>Breite (X): <span id="valX">400</span> mm</label>
+        <div class="input-row">
+            <label>Breite (X):</label>
+            <div><input type="number" id="numX" class="num-input" value="400"> mm</div>
+        </div>
         <input type="range" id="drawerX" min="100" max="800" value="400">
         
-        <label>Tiefe (Y): <span id="valY">500</span> mm</label>
+        <div class="input-row">
+            <label>Tiefe (Y):</label>
+            <div><input type="number" id="numY" class="num-input" value="500"> mm</div>
+        </div>
         <input type="range" id="drawerY" min="100" max="800" value="500">
 
-        <label>Höhe (Z): <span id="valZ">80</span> mm</label>
+        <div class="input-row">
+            <label>Höhe (Z):</label>
+            <div><input type="number" id="numZ" class="num-input" value="80"> mm</div>
+        </div>
         <input type="range" id="drawerZ" min="40" max="400" value="80">
 
         <h3>System-Einstellungen</h3>
         <div class="checkbox-group">
-            <label style="margin-top:0;">Schienen platzieren an:</label>
+            <label style="margin-top:0; font-size:13px; font-weight:bold;">Schienen platzieren an:</label>
             <div class="checkbox-row">
                 <label><input type="checkbox" id="optRailL" checked> Links</label>
                 <label><input type="checkbox" id="optRailR" checked> Rechts</label>
@@ -61,15 +74,8 @@
                 <label><input type="checkbox" id="optRailF" checked> Vorne</label>
                 <label><input type="checkbox" id="optRailB" checked> Hinten</label>
             </div>
-            <label style="margin-top:12px;"><input type="checkbox" id="optSnap" checked> 🧲 An Rastern einrasten</label>
+            <label style="margin-top:12px; font-size:13px; font-weight:bold;"><input type="checkbox" id="optSnap" checked> 🧲 An Rastern einrasten</label>
         </div>
-
-        <label>Verbinder-Einschubtiefe:</label>
-        <select id="optConnector">
-            <option value="14">Standard (14 mm Einschub)</option>
-            <option value="10">Kurz (10 mm Einschub)</option>
-            <option value="18">Tief (18 mm Einschub)</option>
-        </select>
 
         <div class="btn-group">
             <button class="btn-hor" id="addHWall">+ Horizontal (X)</button>
@@ -132,6 +138,7 @@
         const Schiene_Zahn_Hoehe = 6.0;
         const Schiene_Zahn_Dicke = 2.0;
         const Verbinder_Arm_Laenge = 20.0; 
+        const Verbinder_Einschub_Tiefe = 14.0; // Fest eingestellt
         const Verbinder_Aussenwand = 2.5;
 
         const raster_mass = Schiene_Zahn_Dicke + System_Wand_Dicke + Schlitz_Toleranz;
@@ -170,7 +177,6 @@
             systemGroup.clear();
             systemGroup.position.set(-Schubladen_Breite/2, 0, -Schubladen_Tiefe/2);
 
-            // Transparente Schubladen-Box (Boden + 4 Wände)
             const floor = new THREE.Mesh(new THREE.BoxGeometry(Schubladen_Breite, 2, Schubladen_Tiefe), matFloor);
             floor.position.set(Schubladen_Breite/2, -1, Schubladen_Tiefe/2);
             systemGroup.add(floor);
@@ -196,7 +202,6 @@
             const hasF = document.getElementById('optRailF').checked;
             const hasB = document.getElementById('optRailB').checked;
             
-            const Verbinder_Einschub_Tiefe = parseFloat(document.getElementById('optConnector').value);
             const Verbinder_Luecke = Verbinder_Arm_Laenge - Verbinder_Einschub_Tiefe; 
             const Verbinder_Breite = System_Wand_Dicke + Schlitz_Toleranz + (2 * Verbinder_Aussenwand);
 
@@ -205,7 +210,7 @@
             let min_y = hasB ? Schiene_Platten_Dicke : 0;
             let max_y = hasF ? Schubladen_Tiefe - Schiene_Platten_Dicke : Schubladen_Tiefe;
 
-            // Raster-Schienen Y (Links/Rechts)
+            // Raster Y
             function drawRailY(x_pos, isRight) {
                 let anzahl = Math.floor(Schubladen_Tiefe / raster_mass);
                 let belegt = (anzahl * Schiene_Zahn_Dicke) + ((anzahl - 1) * (System_Wand_Dicke + Schlitz_Toleranz));
@@ -227,7 +232,7 @@
             if(hasL) drawRailY(0, false); 
             if(hasR) drawRailY(Schubladen_Breite, true);
 
-            // Raster-Schienen X (Vorne/Hinten)
+            // Raster X
             function drawRailX(y_pos, isBack) {
                 let schiene_laenge = max_x - min_x;
                 let anzahl = Math.floor(schiene_laenge / raster_mass);
@@ -251,7 +256,7 @@
             if(hasB) drawRailX(0, false); 
             if(hasF) drawRailX(Schubladen_Tiefe, true);
 
-            // Snapping anwenden
+            // Snapping
             wallsData.forEach(w => {
                 if(w.type === 'H') w.snappedPos = getSnappedPosition(w.pos, Schubladen_Tiefe, true, hasL, hasR, hasF, hasB);
                 else w.snappedPos = getSnappedPosition(w.pos, Schubladen_Breite, false, hasL, hasR, hasF, hasB);
@@ -260,7 +265,6 @@
             let h_pos = wallsData.filter(w => w.type === 'H').map(w => w.snappedPos).sort((a,b)=>a-b);
             let v_pos = wallsData.filter(w => w.type === 'V').map(w => w.snappedPos).sort((a,b)=>a-b);
 
-            // Verbinder
             if (h_pos.length > 0 && v_pos.length > 0) {
                 h_pos.forEach(y => {
                     v_pos.forEach(x => {
@@ -279,7 +283,6 @@
                 });
             }
 
-            // Horizontale Wände
             h_pos.forEach(y => {
                 let pts_x = [min_x, ...v_pos, max_x];
                 for(let i=0; i<pts_x.length-1; i++) {
@@ -299,7 +302,6 @@
                 }
             });
 
-            // Vertikale Wände
             v_pos.forEach(x => {
                 let pts_y = [min_y, ...h_pos, max_y];
                 for(let i=0; i<pts_y.length-1; i++) {
@@ -342,15 +344,27 @@
                 div.innerHTML = `
                     <button class="del-btn" data-id="${w.id}">X</button>
                     <strong>${name}</strong>
-                    <label>Position: <span id="wval${w.id}">${w.snappedPos ? w.snappedPos.toFixed(1) : w.pos}</span> mm</label>
+                    <div class="input-row">
+                        <label style="margin:0;">Position:</label>
+                        <div><input type="number" class="num-input" id="wnum${w.id}" value="${w.snappedPos ? w.snappedPos.toFixed(1) : w.pos}"> mm</div>
+                    </div>
                     <input type="range" min="10" max="${maxPos}" value="${w.pos}" id="wslide${w.id}">
                 `;
                 container.appendChild(div);
 
+                // Slider Event
                 document.getElementById(`wslide${w.id}`).addEventListener('input', (e) => {
-                    w.pos = parseInt(e.target.value);
+                    w.pos = parseFloat(e.target.value);
                     buildSystem();
-                    document.getElementById(`wval${w.id}`).innerText = w.snappedPos.toFixed(1);
+                    document.getElementById(`wnum${w.id}`).value = w.snappedPos.toFixed(1);
+                });
+
+                // Number Input Event
+                document.getElementById(`wnum${w.id}`).addEventListener('change', (e) => {
+                    w.pos = parseFloat(e.target.value);
+                    buildSystem();
+                    document.getElementById(`wslide${w.id}`).value = w.snappedPos;
+                    document.getElementById(`wnum${w.id}`).value = w.snappedPos.toFixed(1);
                 });
 
                 div.querySelector('.del-btn').addEventListener('click', () => {
@@ -360,19 +374,22 @@
             });
         }
 
-        // Global Listeners
-        ['drawerX', 'drawerY', 'drawerZ', 'optRailL', 'optRailR', 'optRailF', 'optRailB', 'optSnap', 'optConnector'].forEach(id => {
-            document.getElementById(id).addEventListener('input', (e) => {
-                if (id === 'drawerX') Schubladen_Breite = parseInt(e.target.value);
-                if (id === 'drawerY') Schubladen_Tiefe = parseInt(e.target.value);
-                if (id === 'drawerZ') Schubladen_Hoehe = parseInt(e.target.value);
-                
-                if (document.getElementById('valX')) document.getElementById('valX').innerText = Schubladen_Breite;
-                if (document.getElementById('valY')) document.getElementById('valY').innerText = Schubladen_Tiefe;
-                if (document.getElementById('valZ')) document.getElementById('valZ').innerText = Schubladen_Hoehe;
-                
-                buildSystem(); updateUI();
-            });
+        function syncDimensions(axis, val) {
+            if (axis === 'X') { Schubladen_Breite = val; document.getElementById('drawerX').value = val; document.getElementById('numX').value = val; }
+            if (axis === 'Y') { Schubladen_Tiefe = val; document.getElementById('drawerY').value = val; document.getElementById('numY').value = val; }
+            if (axis === 'Z') { Schubladen_Hoehe = val; document.getElementById('drawerZ').value = val; document.getElementById('numZ').value = val; }
+            buildSystem(); updateUI();
+        }
+
+        // Global Listeners für X, Y, Z (Slider & Number)
+        ['X', 'Y', 'Z'].forEach(axis => {
+            document.getElementById(`drawer${axis}`).addEventListener('input', (e) => syncDimensions(axis, parseInt(e.target.value)));
+            document.getElementById(`num${axis}`).addEventListener('change', (e) => syncDimensions(axis, parseInt(e.target.value)));
+        });
+
+        // Checkboxen
+        ['optRailL', 'optRailR', 'optRailF', 'optRailB', 'optSnap'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => { buildSystem(); updateUI(); });
         });
 
         document.getElementById('addHWall').addEventListener('click', () => {
